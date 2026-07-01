@@ -1,0 +1,19 @@
+[project]
+name = "nova-pick-place-demo"
+version = "0.1.0"
+description = "Local NOVA app for pick-and-place demo"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "wandelbots-nova[nova-rerun-bridge]>=5.1.3",
+  "pymodbus>=3.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["app", "zimmer_gripper_controller"]

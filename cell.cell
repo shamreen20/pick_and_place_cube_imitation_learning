@@ -1,0 +1,16 @@
+description: cell
+name: cell
+robots:
+  - manufacturer: universalrobots
+    type: universalrobots-ur10e
+    version: ""
+    controller: ur10e-clone
+    virtual:
+      initial_joint_position:
+        - 0.0
+        - -1.5707963267948966
+        - -1.5707963267948966
+        - -1.5707963267948966
+        - 1.5707963267948966
+        - -1.5707963267948966
+        - 0.0

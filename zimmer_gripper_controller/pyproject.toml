@@ -1,0 +1,28 @@
+[project]
+name = "zimmer-gripper-controller"
+version = "0.1.0"
+description = "Standalone Python controller for Zimmer GEH/GED grippers via Turck TBEN-S2-4IOL"
+readme = "README.md"
+requires-python = ">=3.11"
+dependencies = [
+  "pymodbus>=3.6.8,<4.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "ruff>=0.11.0",
+]
+
+[build-system]
+requires = ["hatchling>=1.24.0"]
+build-backend = "hatchling.build"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+
+[tool.ruff]
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
