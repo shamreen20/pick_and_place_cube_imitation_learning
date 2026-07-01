@@ -60,9 +60,9 @@ class ZimmerGripper:
         io_link_port: int = 0,
         timeout_s: float = 1.0,
         jaw_gap_open_m: float = 0.080,
-        jaw_gap_close_m: float = 0.001,
-        device_pos_min_m: float = 0.001,
-        device_pos_max_m: float = 0.040,
+        jaw_gap_close_m: float = 0.045,
+        device_pos_min_m: float = 0.045,
+        device_pos_max_m: float = 0.080,
         force_percent: int = 3,
         drive_velocity_percent: int = 30,
         startup_timeout_s: float = 25.0,
@@ -143,6 +143,13 @@ class ZimmerGripper:
         clamped = max(1, min(100, int(force_percent)))
         applied = await asyncio.to_thread(self._session.set_force_percent, clamped)
         print(f"[ZimmerGripper] set force to {applied}%")
+        return applied
+
+    async def set_velocity_percent(self, velocity_percent: int):
+        """Set jaw drive velocity while running (1-100%)."""
+        clamped = max(1, min(100, int(velocity_percent)))
+        applied = await asyncio.to_thread(self._session.set_velocity_percent, clamped)
+        print(f"[ZimmerGripper] set velocity to {applied}%")
         return applied
 
     async def shutdown(self):

@@ -40,8 +40,23 @@ def _env_int(name: str, default: int) -> int:
         return default
 
 
+def _env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    try:
+        return float(_sanitize_env_value(raw))
+    except ValueError:
+        print(f"[WARN] Invalid float for {name}={raw!r}. Using default {default}.")
+        return default
+
+
 def _clamp_percent(value: int) -> int:
     return max(1, min(100, int(value)))
+
+
+def _clamp_gap_mm(value: float) -> float:
+    return max(1.0, min(80.0, float(value)))
 
 
 def _load_env_file() -> None:
@@ -121,16 +136,28 @@ async def start(
     zimmer_unit_id: int = Field(default=_env_int("ZIMMER_UNIT_ID", 1)),
     zimmer_io_link_port: int = Field(default=_env_int("ZIMMER_IO_LINK_PORT", 0)),
     zimmer_force_percent: int = Field(
-        default=_env_int("ZIMMER_FORCE_PERCENT", 4),
+        default=_env_int("ZIMMER_FORCE_PERCENT", 2),
         ge=1,
         le=100,
         description="Zimmer force while closing/gripping in percent",
     ),
     zimmer_hold_force_percent: int = Field(
-        default=_env_int("ZIMMER_HOLD_FORCE_PERCENT", 3),
+        default=_env_int("ZIMMER_HOLD_FORCE_PERCENT", 1),
         ge=1,
         le=100,
         description="Zimmer force while carrying the part in percent",
+    ),
+    zimmer_velocity_percent: int = Field(
+        default=_env_int("ZIMMER_VELOCITY_PERCENT", 20),
+        ge=1,
+        le=100,
+        description="Zimmer jaw drive velocity in percent",
+    ),
+    zimmer_grip_gap_mm: float = Field(
+        default=_env_float("ZIMMER_GRIP_GAP_MM", 45.0),
+        ge=1.0,
+        le=80.0,
+        description="Target jaw gap during gripping in millimeters",
     ),
 ):
     cell = ctx.cell
@@ -150,6 +177,9 @@ async def start(
 
     grip_force_percent = _clamp_percent(zimmer_force_percent)
     hold_force_percent = _clamp_percent(zimmer_hold_force_percent)
+    velocity_percent = _clamp_percent(zimmer_velocity_percent)
+    grip_gap_mm = _clamp_gap_mm(zimmer_grip_gap_mm)
+    grip_gap_m = grip_gap_mm / 1000.0
     if hold_force_percent > grip_force_percent:
         print(
             f"[WARN] HOLD force {hold_force_percent}% is greater than GRIP force "
@@ -164,11 +194,13 @@ async def start(
             unit_id=zimmer_unit_id,
             io_link_port=zimmer_io_link_port,
             force_percent=grip_force_percent,
+            drive_velocity_percent=velocity_percent,
         )
         print(
             f"[Gripper] ZimmerGripper @ {zimmer_host}:{zimmer_port} "
             f"unit={zimmer_unit_id} io_link_port={zimmer_io_link_port} "
-            f"grip_force={grip_force_percent}% hold_force={hold_force_percent}%"
+            f"grip_force={grip_force_percent}% hold_force={hold_force_percent}% "
+            f"velocity={velocity_percent}% grip_gap={grip_gap_mm:.1f}mm"
         )
     else:
         gripper = MockGripper()
@@ -206,6 +238,8 @@ async def start(
         print("[Gripper] Initializing...")
         await gripper.wait_until_ready()
         await gripper.set_force_percent(grip_force_percent)
+        if isinstance(gripper, ZimmerGripper):
+            await gripper.set_velocity_percent(velocity_percent)
         await gripper.open()
 
         await move([cartesian_ptp(HOME_POSE, settings=slow)], "HOME startup")
@@ -217,9 +251,12 @@ async def start(
             # Pick at target.
             await move([cartesian_ptp(TARGET_APPROACH, settings=avg)], "TARGET_APPROACH")
             await move([cartesian_ptp(TARGET_PICK, settings=avg)], "TARGET_PICK descend")
-            print("[Gripper] CLOSE at target")
+            print(f"[Gripper] GRIP at target (gap={grip_gap_mm:.1f}mm)")
             await gripper.set_force_percent(grip_force_percent)
-            await gripper.close()
+            if isinstance(gripper, ZimmerGripper):
+                await gripper.move_to_gap_m(grip_gap_m)
+            else:
+                await gripper.close()
             await gripper.set_force_percent(hold_force_percent)
 
             # Place on random table pose.
@@ -245,9 +282,12 @@ async def start(
             # Pick from random table pose.
             await move([cartesian_ptp(random_approach, settings=avg)], "RANDOM return")
             await move([cartesian_ptp(random_pose, settings=avg)], "RANDOM descend pick")
-            print("[Gripper] CLOSE at random")
+            print(f"[Gripper] GRIP at random (gap={grip_gap_mm:.1f}mm)")
             await gripper.set_force_percent(grip_force_percent)
-            await gripper.close()
+            if isinstance(gripper, ZimmerGripper):
+                await gripper.move_to_gap_m(grip_gap_m)
+            else:
+                await gripper.close()
             await gripper.set_force_percent(hold_force_percent)
 
             # Place back at target.

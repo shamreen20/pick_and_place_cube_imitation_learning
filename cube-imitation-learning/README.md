@@ -1,19 +1,27 @@
 # cube_imitation_learning
 
-This template contains a simple python app served by [fastapi](https://github.com/tiangolo/fastapi) provided via NOVAx.
-It shows you how to use the [NOVA Python SDK](https://github.com/wandelbotsgmbh/wandelbots-nova) and build a basic app with it.
+This folder contains a simple NOVA Python app served by FastAPI through NOVAx.
 
-Use the following steps for development:
+## Local Development
 
-* make sure you have `uv` installed
-    * you can follow these steps https://docs.astral.sh/uv/getting-started/installation/
-* ensure proper environment variables are set in `.env`
-    * note: you might need to set/update `NOVA_ACCESS_TOKEN` and `NOVA_API`
-* use `uv run python -m cube_imitation_learning` to run the the server
-    * access the docs on `http://localhost:8000/docs`
-* build, push and install the app with `nova app install`
+1. Install `uv` if not already installed:
+   https://docs.astral.sh/uv/getting-started/installation/
+2. Ensure `.env` is configured (`NOVA_API`, `CELL_NAME`, optional `NOVA_ACCESS_TOKEN`).
+3. Run locally:
 
-## formatting
+```bash
+uv run python -m cube_imitation_learning
+```
+
+4. Open API docs:
+   `http://localhost:8000/docs`
+5. Deploy with:
+
+```bash
+nova app install
+```
+
+## Formatting
 
 ```bash
 uv run ruff format
