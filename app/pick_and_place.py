@@ -72,6 +72,8 @@ Z_TABLE_APPROACH = 450.0
 Z_DROP = 260.0
 ORIENTATION = (3.1245, -0.0346, -0.0037)
 PLACE_TOUCHDOWN_DZ_MM = 4.0
+RANDOM_TOUCHDOWN_DZ_MM = 1.0
+RELEASE_LIFT_DZ_MM = 3.0
 
 # Fixed robot poses.
 HOME_POSE = Pose((-377.7, -362.7, 557.7, 3.1245, -0.0342, -0.0039))
@@ -225,13 +227,17 @@ async def start(
             await move([cartesian_ptp(random_approach, settings=avg)], "RANDOM_APPROACH")
             await move([cartesian_ptp(random_pose, settings=place)], "RANDOM descend")
             await move(
-                [cartesian_ptp(offset_z_down(random_pose, PLACE_TOUCHDOWN_DZ_MM), settings=place)],
+                [cartesian_ptp(offset_z_down(random_pose, RANDOM_TOUCHDOWN_DZ_MM), settings=place)],
                 "RANDOM touchdown",
             )
             await asyncio.sleep(0.05)
             print("[Gripper] OPEN at random")
             await gripper.open()
             await asyncio.sleep(0.03)
+            await move(
+                [cartesian_ptp(offset_z_down(random_pose, -RELEASE_LIFT_DZ_MM), settings=place)],
+                "RANDOM gentle lift",
+            )
             await move([cartesian_ptp(random_approach, settings=avg)], "RANDOM retreat")
 
             await move([cartesian_ptp(HOME_POSE, settings=slow)], "HOME mid")
