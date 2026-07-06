@@ -10,8 +10,9 @@ from zimmer_gripper_controller import (
 )
 
 # settle_time_s: how long (seconds) to block after issuing a gripper command,
-# waiting for the jaw to physically complete the move. Matches minimal_move.py.
-GRIPPER_SETTLE_S = 0.5
+# waiting for the jaw to physically complete the move. Matches minimal_move.py SETTLE_TIME_S=2.0.
+GRIPPER_SETTLE_S = 2.0
+TARGET_GAP_M = 0.035
 
 
 class MockGripper:
@@ -24,16 +25,29 @@ class MockGripper:
         await asyncio.sleep(settle_time_s)
 
     async def close(self, settle_time_s: float = GRIPPER_SETTLE_S):
-        print("[MockGripper] close")
+        # closes to TARGET_GAP_M (30mm) — correct grip gap for picking the cube
+        print(f"[MockGripper] close to {TARGET_GAP_M*1000:.0f}mm")
         await asyncio.sleep(settle_time_s)
 
     async def release(self, settle_time_s: float = GRIPPER_SETTLE_S):
         print("[MockGripper] release")
         await asyncio.sleep(settle_time_s)
 
+    async def move_to_gap_m(
+        self,
+        gap_m: float | None = None,
+        settle_time_s: float = GRIPPER_SETTLE_S,
+    ):
+        target_gap_m = TARGET_GAP_M if gap_m is None else float(gap_m)
+        print(f"[MockGripper] move_to_gap_m={target_gap_m:.3f} m")
+        await asyncio.sleep(settle_time_s)
+
     async def set_force_percent(self, force_percent: int):
         print(f"[MockGripper] set_force_percent={force_percent}%")
         await asyncio.sleep(0.01)
+
+    async def wait_until_stopped(self, timeout_s: float = 3.0):
+        await asyncio.sleep(0.1)
 
     async def shutdown(self):
         return None
@@ -44,7 +58,7 @@ class ZimmerGripper:
     Async wrapper around GripperSession (synchronous, threaded).
 
         All parameters match the working minimal_move.py configuration:
-            - force_percent=4, drive_velocity_percent=30
+            - force_percent=5, drive_velocity_percent=50
       - device modes: positioning=50, force_outside=62, force_inside=72,
                       preposition_outside=82, preposition_inside=92
       - startup_homing_mode=10
@@ -60,11 +74,11 @@ class ZimmerGripper:
         io_link_port: int = 0,
         timeout_s: float = 1.0,
         jaw_gap_open_m: float = 0.080,
-        jaw_gap_close_m: float = 0.045,
-        device_pos_min_m: float = 0.045,
-        device_pos_max_m: float = 0.080,
-        force_percent: int = 3,
-        drive_velocity_percent: int = 30,
+        jaw_gap_close_m: float = 0.001,
+        device_pos_min_m: float = 0.001,
+        device_pos_max_m: float = 0.040,
+        force_percent: int = 5,
+        drive_velocity_percent: int = 50,
         startup_timeout_s: float = 25.0,
     ):
         jaw_cfg = JawGapConfig(
@@ -122,14 +136,23 @@ class ZimmerGripper:
         print(f"[ZimmerGripper] open (settled {settle_time_s}s)")
 
     async def close(self, settle_time_s: float = GRIPPER_SETTLE_S):
-        """Close to minimum jaw gap (grip) and wait settle_time_s for the move to complete."""
-        await asyncio.to_thread(self._session.close_gripper, settle_time_s)
-        print(f"[ZimmerGripper] close (settled {settle_time_s}s)")
+        """Close to TARGET_GAP_M (30mm) — correct grip gap for picking the cube.
+        Uses move_to_gap_m(), NOT close_gripper(), to avoid going to 1mm (zero)."""
+        await asyncio.to_thread(self._session.move_to_gap_m, TARGET_GAP_M, settle_time_s)
+        print(f"[ZimmerGripper] close to {TARGET_GAP_M*1000:.0f}mm (settled {settle_time_s}s)")
 
-    async def move_to_gap_m(self, gap_m: float, settle_time_s: float = GRIPPER_SETTLE_S):
-        """Move to an arbitrary jaw gap in metres."""
-        await asyncio.to_thread(self._session.move_to_gap_m, gap_m, settle_time_s)
-        print(f"[ZimmerGripper] moved to gap {gap_m*1000:.1f} mm (settled {settle_time_s}s)")
+    async def move_to_gap_m(
+        self,
+        gap_m: float | None = None,
+        settle_time_s: float = GRIPPER_SETTLE_S,
+    ):
+        """Move to default minimal_move target gap, or to an explicit jaw gap in metres."""
+        target_gap_m = TARGET_GAP_M if gap_m is None else float(gap_m)
+        await asyncio.to_thread(self._session.move_to_gap_m, target_gap_m, settle_time_s)
+        print(
+            f"[ZimmerGripper] moved to gap {target_gap_m*1000:.1f} mm "
+            f"(settled {settle_time_s}s)"
+        )
 
     async def release(self, settle_time_s: float = GRIPPER_SETTLE_S):
         await self.open(settle_time_s)
@@ -151,6 +174,18 @@ class ZimmerGripper:
         applied = await asyncio.to_thread(self._session.set_velocity_percent, clamped)
         print(f"[ZimmerGripper] set velocity to {applied}%")
         return applied
+
+    async def wait_until_stopped(self, timeout_s: float = 3.0, poll_interval_s: float = 0.1):
+        """Poll gripper state until in_motion is False or timeout is reached."""
+        deadline = asyncio.get_running_loop().time() + max(0.1, float(timeout_s))
+        while True:
+            st = await self.state()
+            if not st.in_motion:
+                return st
+            if asyncio.get_running_loop().time() >= deadline:
+                print(f"[ZimmerGripper] wait_until_stopped timed out after {timeout_s}s")
+                return st
+            await asyncio.sleep(max(0.02, float(poll_interval_s)))
 
     async def shutdown(self):
         if not self._connected:

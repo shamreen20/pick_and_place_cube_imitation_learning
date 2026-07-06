@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, HTMLResponse
 from novax import Novax
 
+from app.cube_transfer_loop import start_cube_transfer, start_cube_transfer_steps_1_3
 from app.pick_and_place import start
 
 BASE_PATH = os.getenv("BASE_PATH", "")
@@ -26,6 +27,8 @@ app.add_middleware(
 novax = Novax()
 novax.include_programs_router(app)
 novax.register_program(start)
+novax.register_program(start_cube_transfer)
+novax.register_program(start_cube_transfer_steps_1_3)
 
 @app.get("/health", summary="Health check endpoint")
 def health():

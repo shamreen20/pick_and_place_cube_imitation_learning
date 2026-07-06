@@ -1,0 +1,68 @@
+{
+  "version": 1,
+  "metadata": {
+    "dataset": "cube_steps_1_3_1000",
+    "task": "Cube transfer steps 1-3: home -> pick target -> place random -> home",
+    "operator": "NOVA"
+  },
+  "settings": {
+    "chunk_size_mb": 250
+  },
+  "sources": [
+    {
+      "type": "robot",
+      "name": "joint_positions",
+      "motion_group": "0@ur10e",
+      "rate_ms": 64,
+      "stream_type": "joint_position",
+      "required": true
+    },
+    {
+      "type": "robot",
+      "name": "tcp_pose",
+      "motion_group": "0@ur10e",
+      "rate_ms": 64,
+      "stream_type": "tcp_pose",
+      "required": true
+    },
+    {
+      "type": "robot",
+      "name": "commanded_joint_positions",
+      "motion_group": "0@ur10e",
+      "rate_ms": 16,
+      "stream_type": "commanded_joint_position",
+      "required": true
+    },
+    {
+      "type": "camera",
+      "name": "cam_top",
+      "base_url": "http://REPLACE_CAMERA_PROVIDER_BASE_URL_1",
+      "device_id": "REPLACE_DEVICE_ID_1",
+      "stream_type": "color",
+      "required": true
+    },
+    {
+      "type": "camera",
+      "name": "cam_wrist",
+      "base_url": "http://REPLACE_CAMERA_PROVIDER_BASE_URL_2",
+      "device_id": "REPLACE_DEVICE_ID_2",
+      "stream_type": "color",
+      "required": true
+    },
+    {
+      "type": "camera",
+      "name": "cam_side",
+      "base_url": "http://REPLACE_CAMERA_PROVIDER_BASE_URL_3",
+      "device_id": "REPLACE_DEVICE_ID_3",
+      "stream_type": "color",
+      "required": true
+    },
+    {
+      "type": "io",
+      "name": "gripper_state",
+      "controller": "ur10e",
+      "signal": "digital_out[0]",
+      "required": false
+    }
+  ]
+}

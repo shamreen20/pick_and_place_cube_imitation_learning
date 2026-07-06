@@ -1,0 +1,30 @@
+{
+  "version": 1,
+  "format": "lerobot_v3",
+  "fps": 15,
+  "index_column": "canonical_time",
+  "action": "commanded_joint_positions",
+  "state": [
+    "joint_positions",
+    "tcp_pose"
+  ],
+  "cameras": [
+    {
+      "source": "cam_top"
+    },
+    {
+      "source": "cam_wrist"
+    },
+    {
+      "source": "cam_side"
+    }
+  ],
+  "trimming": {
+    "mode": "signal_change",
+    "source": "joint_positions",
+    "threshold": 0.01,
+    "tail_ms": 500
+  },
+  "task_description": "cube-transfer-steps-1-3",
+  "dataset_id": "nova/cube-transfer-steps-1-3"
+}

@@ -1,95 +1,212 @@
-# Pick Place Imitation Learning
+# Nova Pick and Place Demo
 
-Python app for Wandelbots NOVA with a pick/place loop, Zimmer gripper integration, and optional local RealSense camera API checks.
-
-Current NOVA app name: `pick-place-imitation-learning` (from `.nova`).
+A Python application for Wandelbots NOVA that demonstrates a pick-and-place workflow with random table repositioning, using a UR10e robot and a Zimmer GEH6060 parallel gripper.
 
 ## Features
 
-- Pick and place loop with target and randomized table pose
-- Zimmer gripper support (real Modbus device) and mock fallback
-- Tunable grip, hold, velocity, and grip-gap parameters via `.env`
-- Local RealSense API connectivity script without using app UI
-- NOVA deployment flow via `nova app install`
+- **Robot loop**: Home → Pick from fixed target → Place at random table position → Home → Retrieve & return (repeats N cycles)
+- **Zimmer GEH6060 gripper**: Real Modbus TCP control via Turck TBEN-S2-4IOL, or mock gripper for simulation
+- **TCP compensation**: Poses taught with `OnRobot_Single` TCP are automatically converted to `umi_gripper` TCP at runtime
+- **NOVA deployment ready**: FastAPI backend, Docker containerised, runs as a NOVA app
 
 ## Prerequisites
 
-- Python 3.11+
-- `uv` installed
-- Docker and NOVA CLI for deployment
-- Reachable NOVA host and cell
+- Python 3.11+ and [uv](https://docs.astral.sh/uv/)
+- Docker (for deployment to NOVA)
+- Wandelbots NOVA CLI: `brew install wandelbotsgmbh/wandelbots/nova` (macOS/Linux) or [download](https://github.com/wandelbotsgmbh/nova-cli/releases) (Windows)
+- Access to a NOVA instance (cloud or local)
 
-## Local Run
+---
+
+## Quick Start
+
+### 1. Install dependencies
 
 ```bash
-cd nova-pick-place-imitation-learning
 uv sync
-uv run python -m app.pick_and_place
 ```
 
-## Gripper Parameters
+### 2. Configure environment
 
-Main runtime parameters are loaded from `.env`:
+Edit `.env` with your NOVA and gripper details:
+
+```env
+NOVA_API=http://<YOUR_NOVA_IP>
+CELL_NAME=cell
+ROBOT_CONTROLLER_NAME=ur10e
+
+# Zimmer gripper — leave ZIMMER_HOST empty to use MockGripper (simulation)
+ZIMMER_HOST=172.31.13.49
+ZIMMER_PORT=502
+ZIMMER_UNIT_ID=1
+ZIMMER_IO_LINK_PORT=0
+ZIMMER_FORCE_PERCENT=5
+ZIMMER_STARTUP_TIMEOUT_S=60
+```
+
+### 3. Run the web API backend (registers programs with NOVA)
 
 ```bash
-ZIMMER_FORCE_PERCENT=2
-ZIMMER_HOLD_FORCE_PERCENT=1
-ZIMMER_VELOCITY_PERCENT=20
-ZIMMER_GRIP_GAP_MM=45.0
+uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Meaning:
+Open browser: http://localhost:8000
 
-- `ZIMMER_FORCE_PERCENT`: force used while closing to grip
-- `ZIMMER_HOLD_FORCE_PERCENT`: reduced force while carrying
-- `ZIMMER_VELOCITY_PERCENT`: jaw movement speed
-- `ZIMMER_GRIP_GAP_MM`: target jaw gap during grip (example: `45.0` for 4.5 cm)
-
-When the run starts, console output prints the effective values, for example:
-
-```text
-[Gripper] ZimmerGripper @ 172.31.13.49:502 unit=1 io_link_port=0 grip_force=2% hold_force=1% velocity=20% grip_gap=45.0mm
-```
-
-## Local RealSense Camera (No App UI)
-
-This project includes `realsense_local_connect.py` for direct backend API checks:
+### 4. Run directly from CLI (without NOVA UI)
 
 ```bash
-python3 realsense_local_connect.py
+uv run python -m app.pick_and_place.pick_and_place
 ```
 
-Useful options:
-
-```bash
-python3 realsense_local_connect.py --no-start
-python3 realsense_local_connect.py --keep-stream
-python3 realsense_local_connect.py --base-url http://172.31.11.129/cell/realsense/
-```
+---
 
 ## Deploy to NOVA
 
+### 1. Build and push the Docker image
+
 ```bash
-nova config set host wandelbox-hhmnwy
-nova config set image-registry registry-1.docker.io/<dockerhub-user>
+docker build -t YOUR-DOCKERHUB-USERNAME/nova-pick-place-demo:latest .
+docker push YOUR-DOCKERHUB-USERNAME/nova-pick-place-demo:latest
+```
+
+### 2. Deploy
+
+```bash
 nova app install
 ```
 
-After install, open:
+Open your NOVA instance UI — the app appears on the home screen with a **Pick and Place** program.
 
-- `http://wandelbox-hhmnwy/`
-- `http://wandelbox-hhmnwy/cell/pick-place-imitation-learning/`
+---
 
-## Repository Notes
+## Gripper Behaviour
 
-- `.nova` defines the installed app name and metadata.
-- `app/pick_and_place.py` is the program entrypoint.
-- `app/gripper_helper.py` bridges app code to `zimmer_gripper_controller`.
-- `zimmer_gripper_controller/` contains the low-level driver/session implementation.
+The Zimmer GEH6060 jaw gap is set to `TARGET_GAP_M = 0.035 m` (35 mm) when picking.
+`close()` positions the jaws at this gap — it does **not** drive to zero (force mode).
+`open()` drives to the full 80 mm open position.
+
+Per-cycle sequence:
+```
+startup       → open  (80 mm)
+TARGET_PICK   → close (35 mm) ← grips cube
+RANDOM place  → open  (80 mm) ← releases cube
+RANDOM pick   → close (35 mm) ← grips cube
+TARGET place  → open  (80 mm) ← releases cube
+```
+
+Gripper parameters (matched to `minimal_move.py`):
+
+| Parameter | Value |
+|---|---|
+| `TARGET_GAP_M` | 0.035 m (35 mm) |
+| `GRIPPER_SETTLE_S` | 2.0 s |
+| `grip_force_percent` | 5 % (min for physical closing) |
+| `drive_velocity_percent` | 50 % |
+
+If `ZIMMER_HOST` is empty, `MockGripper` is used automatically — no hardware needed.
+
+---
+
+## Configuration
+
+### Environment variables
+
+| Variable | Default | Description |
+|---|---|---|
+| `NOVA_API` | — | NOVA instance URL, e.g. `http://172.31.11.253` |
+| `CELL_NAME` | `cell` | NOVA cell/workspace name |
+| `ROBOT_CONTROLLER_NAME` | `ur10e` | Controller name in NOVA |
+| `ZIMMER_HOST` | *(empty)* | TBEN-S2-4IOL Modbus IP — empty = MockGripper |
+| `ZIMMER_PORT` | `502` | Modbus TCP port |
+| `ZIMMER_UNIT_ID` | `1` | Modbus unit ID |
+| `ZIMMER_IO_LINK_PORT` | `0` | IO-Link port on TBEN (0–3) |
+| `ZIMMER_FORCE_PERCENT` | `5` | Grip force (1–100 %) |
+| `ZIMMER_STARTUP_TIMEOUT_S` | `60` | Homing/startup timeout in seconds |
+| `RANDOM_RELEASE_EXTRA_DZ_MM` | `10` | Extra Z touchdown depth at random place (mm) |
+
+### Motion speeds
+
+Defined in `app/pick_and_place/pick_and_place.py`:
+
+```python
+slow  = MotionSettings(tcp_velocity_limit=50)   # home transitions
+avg   = MotionSettings(tcp_velocity_limit=80)   # approach / pick / carry
+place = MotionSettings(tcp_velocity_limit=30)   # final descent and touchdown
+```
+
+### Workspace bounds
+
+Defined in `app/pick_and_place/pick_and_place_poses.py`:
+
+```python
+X_MIN, X_MAX       = -520.2, 507.9   # random table X range (mm)
+Y_MIN, Y_MAX       = -522.1, -192.7  # random table Y range (mm)
+Z_TABLE_APPROACH   = 450.0           # hover height (mm)
+Z_DROP             = 265.0           # table surface drop height (mm)
+```
+
+---
+
+## Project Structure
+
+```
+nova-pick-place-demo/
+├── app/
+│   ├── __init__.py
+│   ├── main.py                          # FastAPI backend — registers NOVA programs
+│   ├── gripper_helper.py                # MockGripper and ZimmerGripper async wrappers
+│   ├── camera/
+│   │   ├── __init__.py
+│   │   ├── camera_app_check.py          # CLI: check NOVA camera devices
+│   │   └── camera_client.py            # CameraClient for NOVA camera API
+│   └── pick_and_place/
+│       ├── __init__.py
+│       ├── pick_and_place.py            # Main NOVA program — robot + gripper loop
+│       ├── pick_and_place_env.py        # Env var helpers (load_env_file, env_int, …)
+│       ├── pick_and_place_motion.py     # TCP selection + motion execution with retry
+│       └── pick_and_place_poses.py      # All pose constants + TCP compensation math
+├── zimmer_gripper_controller/           # Zimmer GEH6060 Modbus driver package
+│   ├── minimal_move.py                  # Standalone gripper test script
+│   └── …
+├── data_collection/                     # LeRobot data export helpers
+├── cube-imitation-learning/             # Imitation learning subproject
+├── pyproject.toml                       # Dependencies (uv)
+├── Dockerfile                           # Container build
+├── .env                                 # Environment variables (do not commit)
+└── README.md
+```
+
+---
 
 ## Troubleshooting
 
-- `ModuleNotFoundError: No module named nova`:
-	Run with `uv run ...` instead of plain `python3`.
-- Gripper startup timeout (`diag=0x0301`):
-	Check TBEN connectivity, IO-Link port mapping, and actuator readiness.
+### MockGripper used instead of real gripper
+`ZIMMER_HOST` is empty when the program runs. This happens when `.env` is not loaded.
+The program loads `.env` from the project root automatically. Verify:
+```bash
+grep ZIMMER_HOST .env   # should show: ZIMMER_HOST=172.31.13.49
+```
+
+### Gripper closes to wrong gap / goes to zero
+`close()` must call `session.move_to_gap_m(TARGET_GAP_M)`, not `close_gripper()`.
+`close_gripper()` drives jaws to `jaw_gap_min_m = 1 mm` (zero). Check `gripper_helper.py`.
+
+### Robot program fails with `InitMovementFailed`
+The controller is in monitor mode. The motion module retries once automatically by
+switching to control mode. If it fails repeatedly, check controller state in NOVA UI.
+
+### TCP not found
+The program requires `umi_gripper` TCP registered on the controller. Available TCPs are
+printed at startup: `Available TCPs: ['OnRobot_Single', 'umi_gripper']`.
+Register `umi_gripper` in NOVA UI under controller settings with offset
+`(-1.5724, 3.6754, 221.7036, 0, 0, 0)` mm relative to the flange.
+
+### Test the gripper in isolation
+```bash
+set -a && source .env && set +a
+uv run python zimmer_gripper_controller/minimal_move.py
+# Expected output:
+# Target gap: 0.03000 m
+# Actual gap: 0.03002 m
+# Diagnosis: 0x0000
+```

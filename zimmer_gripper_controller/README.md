@@ -14,8 +14,6 @@ The design goal is low complexity:
 - user-facing jaw-gap commands in meters
 - software limits for travel, gripping force, and velocity
 
-This package is used directly by the top-level app in this repository (`app/gripper_helper.py`).
-
 ## Architecture
 
 - `PC -> Modbus TCP -> TBEN-S2-4IOL -> IO-Link -> Zimmer gripper`
@@ -54,9 +52,6 @@ Important defaults:
 - velocity: `15 %`
 - startup timeout: `25 s`
 
-Note: The top-level app may override these defaults in its wrapper configuration
-for specific hardware tuning (for example different jaw minimums, force, or velocity).
-
 ## Python API
 
 Use `GripperSession` for robot-facing code.
@@ -78,16 +73,6 @@ with GripperSession(config) as gripper:
 If you want a simple blocking pause after a move, pass `settle_time_s` to `move_to_gap_m()`, `open()`, or `close_gripper()`.
 
 You can also use the low-level `GripperController` directly if you want Zimmer device-position control instead of jaw-gap commands.
-
-## Runtime Parameters That Affect Holding
-
-At runtime, these values are written to the output process data during controller handshakes:
-
-- `grip_force_percent`
-- `drive_velocity_percent`
-
-They are clamped by `LimitConfig` ranges and then transmitted through `OutputPDU`
-as `grip_force` and `drive_velocity`.
 
 ## Safety Notes
 
