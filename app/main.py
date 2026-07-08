@@ -272,8 +272,8 @@ async def root():
               <h2 class="card-title">Control Panel</h2>
               <form id="control-form" onsubmit="event.preventDefault(); startProgram();">
                 <div class="form-group">
-                  <label for="count">Cycle Repeat Count (1 to 10):</label>
-                  <input type="number" id="count" name="count" min="1" max="10" value="4">
+                  <label for="count">Cycle Repeat Count (1 to 100):</label>
+                  <input type="number" id="count" name="count" min="1" max="100" value="4">
                 </div>
                 <div class="form-group">
                   <label for="controller_name">Robot Controller Name:</label>

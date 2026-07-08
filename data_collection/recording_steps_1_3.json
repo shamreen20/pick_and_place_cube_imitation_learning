@@ -36,7 +36,7 @@
     {
       "type": "camera",
       "name": "cam_top",
-      "base_url": "http://172.31.11.129/cell/realsense",
+      "base_url": "http://172.31.11.129/cell/realsense/api",
       "device_id": "319522063360",
       "stream_type": "color",
       "required": true
@@ -44,7 +44,7 @@
     {
       "type": "camera",
       "name": "cam_wrist",
-      "base_url": "http://172.31.11.129/cell/realsense",
+      "base_url": "http://172.31.11.129/cell/realsense/api",
       "device_id": "314522065367",
       "stream_type": "color",
       "required": true
@@ -52,8 +52,8 @@
     {
       "type": "camera",
       "name": "cam_side",
-      "base_url": "http://172.31.11.129/cell/elgato",
-      "device_id": "hdmi",
+      "base_url": "http://172.31.11.129/cell/realsense/api",
+      "device_id": "319522063360",
       "stream_type": "color",
       "required": true
     },
@@ -62,7 +62,7 @@
       "name": "gripper_state",
       "controller": "ur10e",
       "signal": "digital_out[0]",
-      "required": false
+      "required": true
     }
   ]
 }

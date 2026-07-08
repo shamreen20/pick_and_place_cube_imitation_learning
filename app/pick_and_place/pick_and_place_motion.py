@@ -17,6 +17,18 @@ def select_tcp(tcps: list[str]) -> str:
     return next((name for name in preferred if name in tcps), tcps[0])  #  Returns first matching preferred TCP, otherwise defaults to first available tcps entry.
 
 
+def _is_controller_claim_error(error_text: str) -> bool:
+    text = error_text.lower()
+    patterns = (
+        "could not claim robot_mode_control",
+        "failed to claim control",
+        "unable to activate position control mode",
+        "failed enable 'position control'",
+        "mode change failed due to exception",
+    )
+    return any(p in text for p in patterns)
+
+
 async def move_with_retry(
     motion_group, # motion_group parameter provides planning/execution API.
     action_list, # action_list parameter contains movement actions (for example cartesian_ptp actions).
@@ -30,7 +42,7 @@ async def move_with_retry(
         await motion_group.execute(traj, tcp, actions=action_list)
     except* InitMovementFailed as eg:
         error_text = str(eg.exceptions[0]) if eg.exceptions else str(eg)
-        if "Could not claim ROBOT_MODE_CONTROL" not in error_text:
+        if not _is_controller_claim_error(error_text):
             raise
 
         print("[WARN] Controller lock detected. Resetting mode and retrying once...")

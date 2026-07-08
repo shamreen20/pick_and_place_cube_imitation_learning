@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-
 import argparse
 import json
 import os
@@ -13,7 +12,7 @@ PROJECT_ROOT = Path(__file__).resolve().parent.parent
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from app.camera.camera_client import CameraClient  # noqa: E402
+from app.camera.camera_client import CameraClient  # nova: E402
 
 
 def parse_env_file(path: Path) -> dict[str, str]:
@@ -42,7 +41,6 @@ def ensure_collector_env(nova_data_collection_root: Path, project_env: dict[str,
     app_env_values["CELL_NAME"] = project_env.get("CELL_NAME", app_env_values.get("CELL_NAME", "cell"))
     app_env_values.setdefault("PORT", "8000")
     app_env_values.setdefault("SERVE_GRPC_PORT", "9876")
-    app_env_values.setdefault("RERUN_VIEWER_ENABLED", "true")
 
     write_env_file(app_env_path, app_env_values)
     print(f"[OK] Collector env updated: {app_env_path}")
@@ -155,7 +153,8 @@ def build_three_camera_sources(cameras_base_url: str, camera_ids: list[str] | No
                 "base_url": cam.provider_url,
                 "device_id": cam.original_device_id,
                 "stream_type": "color",
-                "required": True,
+                # Side camera can be unavailable (for example no HDMI signal). Keep it optional.
+                "required": idx < 2,
             }
         )
 

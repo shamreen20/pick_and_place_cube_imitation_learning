@@ -78,7 +78,7 @@ async def start(
 
     slow = MotionSettings(tcp_velocity_limit=50)
     avg = MotionSettings(tcp_velocity_limit=80)
-    place = MotionSettings(tcp_velocity_limit=30)
+    place = MotionSettings(tcp_velocity_limit=40)
 
     tcps = await motion_group.tcp_names()
     tcp = select_tcp(tcps)

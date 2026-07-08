@@ -5,9 +5,9 @@ from nova.types import Pose  #  Imports Pose type from NOVA, which represents a 
 X_MIN = -520.2
 X_MAX = 507.9
 Y_MIN = -522.1
-Y_MAX = -192.7
-Z_TABLE_APPROACH = 450.0 #Defines Z height for an approach pose above the table (safe hovering height).
-Z_DROP = 265.0 #Defines Z height for a drop pose on the table.
+Y_MAX = -222.1  # Y_MIN + 300mm = 300mm deep (30 cm)
+Z_TABLE_APPROACH = 430.0 #Defines Z height for an approach pose above the table (safe hovering height).
+Z_DROP = 260.0 #Defines Z height for a drop pose on the table.
 ORIENTATION = (3.1245, -0.0346, -0.0037) # Defines a fixed orientation (rotation vector) used for random approach/place poses.
 
 # TCP delta taken from NOVA setup:
